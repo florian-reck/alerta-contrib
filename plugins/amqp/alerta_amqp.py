@@ -11,6 +11,21 @@ except ImportError:
     from alerta.app import app  # alerta < 5.0
 from alerta.plugins import PluginBase
 
+def convert_datetimes (inputDict):
+    if type(inputDict) == type({}):
+        for key in inputDict.keys():
+            if type(inputDict[key]) == type(datetime.datetime(1,1,1)):
+                inputDict[key] = inputDict[key].strftime('%Y-%m-%dT%H:%M:%S.%fZ')
+ 
+            elif type(inputDict[key]) == type([]):
+                for item in inputDict[key]:
+                    if type(item) == type({}):
+                        convert_datetimes(item)
+            else:
+                if type(inputDict[key]) == type({}):
+                    convert_datetimes(item)
+
+
 LOG = logging.getLogger('alerta.plugins.amqp')
 
 DEFAULT_AMQP_URL = 'mongodb://localhost:27017/kombu'
@@ -49,6 +64,7 @@ class FanoutPublisher(PluginBase):
     def post_receive(self, alert):
         LOG.info('Sending message %s to AMQP topic "%s"', alert.get_id(), AMQP_TOPIC)
         body = alert.get_body()
+	convert_datetimes(body)
         LOG.debug('Message: %s', body)
         self.producer.publish(body, declare=[self.exchange], retry=True)
 
